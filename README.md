@@ -3,34 +3,46 @@
 Backend API for [`gym-tracker`](https://github.com/chrisvlds/gym-tracker).
 **Spring Boot 4 / Java 21.** Deployed image: `ghcr.io/chrisvlds/gym-api`.
 
-Right now it's a skeleton — health endpoints and a `/api/ping`. The real job
-(cross-device workout sync + backup for the localStorage-only frontend) is still
-to be designed.
+Whole-blob backup for the localStorage-only frontend: the SPA pushes its entire
+state document up and pulls it back on another device. **Last write wins** — no
+merge/conflict handling, and a single document (`id = "default"`) until there's
+auth.
 
 ## Run locally
 
 ```bash
-./mvnw spring-boot:run          # http://localhost:8080
-./mvnw test
+./mvnw spring-boot:run          # http://localhost:8080, H2 file DB in ./data/
+./mvnw test                     # H2 in-memory
 ```
 
-- `GET /api/ping` → `{ status, service, version, time }`
-- `GET /actuator/health` → overall health
-- `GET /actuator/health/{liveness,readiness}` → k8s probe endpoints
-- `GET /actuator/info` → build info
+| Endpoint | |
+| --- | --- |
+| `GET /api/ping` | `{ status, service, version, time }` |
+| `GET /api/state` | `204` if nothing stored, else `{ updatedAt, payload }` |
+| `PUT /api/state` | body = the state JSON; stores it; → `{ updatedAt }` (`413` if > 5 MB) |
+| `GET /actuator/health/{liveness,readiness}` | k8s probes |
+| `GET /actuator/info` | build info |
 
 ## Layout
 
 ```
 src/main/java/com/chrisvds/gymapi/
-  GymApiApplication.java     entrypoint
-  web/PingController.java    /api/ping
-  config/WebConfig.java      CORS (dev only — see below)
+  GymApiApplication.java          entrypoint
+  web/PingController.java         /api/ping
+  config/WebConfig.java           CORS (dev only — see below)
+  state/WorkoutState.java         @Entity: id, payload (text), updatedAt
+  state/WorkoutStateRepository.java
+  state/StateController.java      GET/PUT /api/state
 src/main/resources/
-  application.properties         base config (port, actuator)
-  application-prod.properties    prod CORS origins
-Dockerfile                       multi-stage: temurin-jdk build -> temurin-jre run
+  application.properties          base + H2 datasource (dev/test default)
+  application-prod.properties     Postgres via SPRING_DATASOURCE_* env
+Dockerfile                        multi-stage: temurin-jdk build -> temurin-jre run
 ```
+
+**Database:** H2 file DB locally; **Postgres** in the cluster (the `postgres`
+StatefulSet in `gym-tracker-infra`, same namespace). Schema is managed by
+Hibernate `ddl-auto=update` — fine for the one-table schema; swap to Flyway if
+it grows.
 
 **CORS is a local-dev convenience.** In production the frontend's nginx
 reverse-proxies `/api` to this service, so browser calls are same-origin and
@@ -59,3 +71,7 @@ Not exposed publicly — no ingress, no tunnel hostname. The `gym-tracker`
 frontend's nginx reverse-proxies `/api/` to
 `gym-api.gym-tracker.svc.cluster.local:8080`, so the browser reaches it
 same-origin at `https://gym.chrisvds.com/api/*`.
+
+⚠️ **No auth yet.** Anyone who can load the app can read/overwrite the stored
+state. Gate `gym.chrisvds.com` behind **Cloudflare Access** before real data
+goes in.
