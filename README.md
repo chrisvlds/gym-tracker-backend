@@ -53,5 +53,6 @@ That repo pins the tag in `deploy/apps/gym-api/` and Flux rolls it onto the Pi
 `gym-tracker-infra`, **Contents: Read and write** (same token pattern as the
 `gym-tracker` repo).
 
-Public URL (`gym-api.chrisvds.com`) is added as a Public Hostname on the
-Cloudflare tunnel — see `gym-tracker-infra/docs/cloudflare-tunnel.md`.
+Not exposed on its own hostname. It's served under the app's domain via a
+`gym.chrisvds.com/api/*` path rule on the Cloudflare tunnel, so the SPA calls it
+same-origin (no CORS) — see `gym-tracker-infra/docs/cloudflare-tunnel.md`.
