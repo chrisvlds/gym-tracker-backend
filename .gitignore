@@ -6,6 +6,9 @@ target/
 ### OS ###
 .DS_Store
 
+### local dev ###
+/data/
+
 ### STS ###
 .apt_generated
 .classpath
