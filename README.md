@@ -6,7 +6,19 @@ Backend API for [`gym-tracker`](https://github.com/chrisvlds/gym-tracker).
 Whole-blob backup for the localStorage-only frontend: the SPA pushes its entire
 state document up and pulls it back on another device. **Last write wins** — no
 merge/conflict handling, and a single document (`id = "default"`) until there's
-auth.
+per-user auth.
+
+## Status (2026-09-08)
+
+- ✅ `GET`/`PUT /api/state` live in the cluster, backed by the `postgres`
+  StatefulSet (`gym-tracker` namespace). Verified end to end via
+  `https://gym.chrisvds.com` — a row exists in `workout_state`.
+- ✅ Deploys itself: push to `develop` → image → dispatch → `gym-tracker-infra`
+  pins the tag → Flux rolls it.
+- `/api/*` is gated by the **Cloudflare Access** policy on `gym.chrisvds.com`
+  (email login). The service itself has no auth.
+- ⬜ Next ideas: a real domain model instead of one opaque blob, per-user rows,
+  Flyway migrations. See `gym-tracker-infra/TODO.md`.
 
 ## Run locally
 
@@ -72,6 +84,7 @@ frontend's nginx reverse-proxies `/api/` to
 `gym-api.gym-tracker.svc.cluster.local:8080`, so the browser reaches it
 same-origin at `https://gym.chrisvds.com/api/*`.
 
-⚠️ **No auth yet.** Anyone who can load the app can read/overwrite the stored
-state. Gate `gym.chrisvds.com` behind **Cloudflare Access** before real data
-goes in.
+**Auth:** none in the service itself. `gym.chrisvds.com` (and therefore
+`/api/*`) is behind a **Cloudflare Access** policy — email login, allow-list of
+one — so only an authenticated browser reaches it. Fine for a single user;
+add real auth here if it's ever shared.
