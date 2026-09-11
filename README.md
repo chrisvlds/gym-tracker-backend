@@ -22,6 +22,9 @@ at the gym.
 - The old opaque `GET`/`PUT /api/state` blob store is **gone**.
 - Schema is still Hibernate `ddl-auto=update`; Flyway is the next step if it
   keeps growing (see `gym-tracker-infra/TODO.md`).
+- Ideas / not started: wearable integration (sleep + HRV → recovery-aware
+  progression, bodyweight auto-sync, HR per session) — research in
+  `docs/wearable-integration.md`.
 
 ## Run locally
 
